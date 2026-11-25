@@ -1949,6 +1949,19 @@ DisplayError HWDeviceDRM::DefaultCommit(HWLayersInfo *hw_layers_info) {
 DisplayError HWDeviceDRM::AtomicCommit(HWLayersInfo *hw_layers_info) {
   DTRACE_SCOPED();
 
+  const uint32_t frame_brightness = pending_frame_brightness_.exchange(0);
+  if (frame_brightness != 0) {
+    int result = -EOPNOTSUPP;
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_FRAME_BRIGHTNESS, token_.conn_id,
+                              frame_brightness, &result);
+    if (result < 0) {
+      uint32_t no_new_brightness = 0;
+      pending_frame_brightness_.compare_exchange_strong(no_new_brightness, frame_brightness);
+      DLOGE("Failed to add frame brightness to connector %u: %d", token_.conn_id, result);
+      return kErrorHardware;
+    }
+  }
+
   int64_t release_fence_fd = -1;
   int64_t retire_fence_fd = -1;
 
@@ -1973,6 +1986,10 @@ DisplayError HWDeviceDRM::AtomicCommit(HWLayersInfo *hw_layers_info) {
   shared_ptr<Fence> release_fence = Fence::Create(INT(release_fence_fd), "release");
   shared_ptr<Fence> retire_fence = Fence::Create(INT(retire_fence_fd), "retire");
   if (ret) {
+    if (frame_brightness != 0) {
+      uint32_t no_new_brightness = 0;
+      pending_frame_brightness_.compare_exchange_strong(no_new_brightness, frame_brightness);
+    }
     DLOGE("%s failed with error %d crtc %d", __FUNCTION__, ret, token_.crtc_id);
     DumpHWLayers(hw_layers_info);
     vrefresh_ = 0;

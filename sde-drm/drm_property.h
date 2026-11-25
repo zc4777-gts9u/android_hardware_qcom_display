@@ -235,6 +235,7 @@ enum struct DRMProperty {
   FINGERPRINT_MASK,
 #endif
 
+  FRAME_BRIGHTNESS,
   // Insert above
   MAX
 };

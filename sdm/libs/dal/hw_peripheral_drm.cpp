@@ -108,6 +108,11 @@ DisplayError HWPeripheralDRM::Init() {
   PopulateBitClkRates();
   CreatePanelFeaturePropertyMap();
 
+  if (!default_mode_) {
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_GET_FRAME_BRIGHTNESS_SUPPORT, token_.conn_id,
+                              &frame_brightness_supported_);
+  }
+
   return kErrorNone;
 }
 
@@ -577,6 +582,7 @@ DisplayError HWPeripheralDRM::PowerOn(const HWQosData &qos_data, SyncPoints *syn
 
 DisplayError HWPeripheralDRM::PowerOff(bool teardown, SyncPoints *sync_points) {
   DTRACE_SCOPED();
+  pending_frame_brightness_.store(0);
   if (!first_cycle_) {
     drm_mgr_intf_->MarkPanelFeatureForNullCommit(token_,
                                            panel_feature_property_map_[kPanelFeatureDemuraInitCfg]);
@@ -608,6 +614,7 @@ DisplayError HWPeripheralDRM::PowerOff(bool teardown, SyncPoints *sync_points) {
 
 DisplayError HWPeripheralDRM::Doze(const HWQosData &qos_data, SyncPoints *sync_points) {
   DTRACE_SCOPED();
+  ApplyPendingFrameBrightness();
   SetVMReqState();
 
   if (!first_cycle_ && switch_mode_valid_ && !doze_poms_switch_done_ &&
@@ -632,6 +639,7 @@ DisplayError HWPeripheralDRM::Doze(const HWQosData &qos_data, SyncPoints *sync_p
 }
 
 DisplayError HWPeripheralDRM::DozeSuspend(const HWQosData &qos_data, SyncPoints *sync_points) {
+  ApplyPendingFrameBrightness();
   SetVMReqState();
 
   if (switch_mode_valid_ && !doze_poms_switch_done_ &&
@@ -729,14 +737,31 @@ DisplayError HWPeripheralDRM::SetPanelBrightness(int level) {
   }
 #endif
 
-  char buffer[kMaxSysfsCommandLength] = {0};
-
   if (brightness_base_path_.empty()) {
     return kErrorHardware;
   }
   if (!active_) {
     return kErrorNone;
   }
+  if (frame_brightness_supported_ && !first_cycle_ && level > 0 &&
+      last_power_mode_ == DRMPowerMode::ON) {
+    pending_frame_brightness_.store(UINT32(level));
+    return kErrorNeedsCommit;
+  }
+
+  pending_frame_brightness_.store(0);
+  return WritePanelBrightness(level);
+}
+
+void HWPeripheralDRM::ApplyPendingFrameBrightness() {
+  const uint32_t level = pending_frame_brightness_.exchange(0);
+  if (level != 0 && WritePanelBrightness(INT(level)) != kErrorNone) {
+    DLOGW("Failed to apply queued brightness before entering low-power mode: %u", level);
+  }
+}
+
+DisplayError HWPeripheralDRM::WritePanelBrightness(int level) {
+  char buffer[kMaxSysfsCommandLength] = {0};
 
   std::string brightness_node(brightness_base_path_ + "brightness");
   int fd = Sys::open_(brightness_node.c_str(), O_RDWR);

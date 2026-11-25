@@ -1194,12 +1194,17 @@ DisplayError DisplayBuiltIn::SetPanelBrightness(float brightness) {
   }
 
   DisplayError err = hw_intf_->SetPanelBrightness(level);
-  if (err == kErrorNone) {
+  if (err == kErrorNone || err == kErrorNeedsCommit) {
     level_remainder_ = level_remainder;
     pending_brightness_ = false;
     comp_manager_->SetBacklightLevel(display_comp_ctx_, level);
     DLOGI_IF(kTagDisplay, "Setting brightness to level %d (%f percent)", level,
              brightness * 100);
+    if (err == kErrorNeedsCommit) {
+      // Brightness-only updates still need a commit when no app is drawing.
+      event_handler_->Refresh();
+    }
+    return kErrorNone;
   } else if (err == kErrorDeferred) {
     // TODO(user): I8508d64a55c3b30239c6ed2886df391407d22f25 causes mismatch between perceived
     // power state and actual panel power state. Requires a rework. Below check will set up

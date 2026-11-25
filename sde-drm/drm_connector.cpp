@@ -1332,6 +1332,20 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
     } break;
 #endif
 
+    case DRMOps::CONNECTOR_GET_FRAME_BRIGHTNESS_SUPPORT: {
+      bool *supported = va_arg(args, bool *);
+      *supported = prop_mgr_.IsPropertyAvailable(DRMProperty::FRAME_BRIGHTNESS);
+    } break;
+    case DRMOps::CONNECTOR_SET_FRAME_BRIGHTNESS: {
+      uint32_t level = va_arg(args, uint32_t);
+      int *result = va_arg(args, int *);
+      if (!prop_mgr_.IsPropertyAvailable(DRMProperty::FRAME_BRIGHTNESS)) {
+        *result = -EOPNOTSUPP;
+        break;
+      }
+      uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::FRAME_BRIGHTNESS);
+      *result = drmModeAtomicAddProperty(req, obj_id, prop_id, level);
+    } break;
     case DRMOps::CONNECTOR_SET_TRANSFER_TIME: {
       if (!prop_mgr_.IsPropertyAvailable(DRMProperty::DYN_TRANSFER_TIME)) {
         return;

@@ -230,6 +230,8 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "fingerprint_mask" || name == "hbm_enable") { return DRMProperty::FINGERPRINT_MASK; }
 #endif
 
+  if (name == "frame_brightness") { return DRMProperty::FRAME_BRIGHTNESS; }
+
   return DRMProperty::INVALID;
 }
 

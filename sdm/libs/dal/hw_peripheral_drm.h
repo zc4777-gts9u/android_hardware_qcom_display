@@ -124,6 +124,8 @@ class HWPeripheralDRM : public HWDeviceDRM, public PanelFeaturePropertyIntf {
   }
   void CacheDestScalarData();
   void SetSelfRefreshState();
+  DisplayError WritePanelBrightness(int level);
+  void ApplyPendingFrameBrightness();
   void SetVMReqState();
   void ResetPropertyCache();
 
@@ -142,6 +144,7 @@ class HWPeripheralDRM : public HWDeviceDRM, public PanelFeaturePropertyIntf {
   void PopulateBitClkRates();
   std::vector<uint64_t> bitclk_rates_;
   std::string brightness_base_path_ = "";
+  bool frame_brightness_supported_ = false;
   SelfRefreshState self_refresh_state_ = kSelfRefreshNone;
   bool ltm_hist_en_ = false;
   bool aba_hist_en_ = false;

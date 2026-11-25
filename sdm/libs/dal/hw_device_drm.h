@@ -323,6 +323,7 @@ class HWDeviceDRM : public HWInterface {
   bool pending_cwb_teardown_ = false;
   PrimariesTransfer blend_space_ = {};
   DRMPowerMode last_power_mode_ = DRMPowerMode::OFF;
+  std::atomic<uint32_t> pending_frame_brightness_{0};
   uint32_t dest_scaler_blocks_used_ = 0;  // Dest scaler blocks in use by this HWDeviceDRM instance.
   // Destination scaler blocks in use by all HWDeviceDRM instances.
   static std::atomic<uint32_t> hw_dest_scaler_blocks_used_;

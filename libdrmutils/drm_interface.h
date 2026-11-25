@@ -557,6 +557,10 @@ enum struct DRMOps {
    */
   CONNECTOR_SET_FINGERPRINT_MASK,
 #endif
+  // Report whether the connector exposes the frame_brightness property (bool *supported).
+  CONNECTOR_GET_FRAME_BRIGHTNESS_SUPPORT,
+  // Add a backlight class level to the commit (uint32_t level, int *result).
+  CONNECTOR_SET_FRAME_BRIGHTNESS,
 };
 
 enum struct DRMRotation {
